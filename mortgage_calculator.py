@@ -159,7 +159,7 @@ if loan_amount > 0 and interest_rate > 0:
             break
     
     # Create stacked bar chart
-    fig, ax = plt.subplots(figsize=(14, 5))
+    fig, ax = plt.subplots(figsize=(18, 6))
     
     bars1 = ax.bar(months, principal_paid_monthly, label='Principal', color='#4CAF50', edgecolor='#2E7D32', linewidth=0.5)
     bars2 = ax.bar(months, interest_paid_monthly, bottom=principal_paid_monthly, label='Interest', color='#FF9800', edgecolor='#F57C00', linewidth=0.5)

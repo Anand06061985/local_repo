@@ -14,7 +14,7 @@ if 'down_pay' not in st.session_state:
 if 'int_rate' not in st.session_state:
     st.session_state.int_rate = 6.5
 if 'loan_trm' not in st.session_state:
-    st.session_state.loan_trm = 30
+    st.session_state.loan_trm = 360
 
 # Loan Amount
 col1, col2 = st.columns(2)
@@ -59,8 +59,8 @@ if rate_input != st.session_state.int_rate:
 interest_rate = st.session_state.int_rate
 
 # Loan Term
-term_slider = col4.slider("Loan Term (years)", 1, 30, st.session_state.loan_trm, step=1)
-term_input = col4.number_input("Loan Term (text input)", value=st.session_state.loan_trm, step=1, min_value=1, max_value=30)
+term_slider = col4.slider("Loan Term (months)", 1, 360, st.session_state.loan_trm, step=1)
+term_input = col4.number_input("Loan Term (text input)", value=st.session_state.loan_trm, step=1, min_value=1, max_value=360)
 
 if term_slider != st.session_state.loan_trm:
     st.session_state.loan_trm = term_slider
@@ -77,7 +77,7 @@ loan_amount = Loan_amount - down_payment
 # Calculate monthly payment
 if loan_amount > 0 and interest_rate > 0:
     monthly_rate = interest_rate / 100 / 12
-    num_payments = loan_term * 12
+    num_payments = loan_term
     monthly_payment = loan_amount * (monthly_rate * (1 + monthly_rate)**num_payments) / ((1 + monthly_rate)**num_payments - 1)
     total_payment = monthly_payment * num_payments
     total_interest = total_payment - loan_amount
@@ -102,7 +102,7 @@ if loan_amount > 0 and interest_rate > 0:
     }
     row3_data = {
         'Total Payment': [f'₹{total_payment:,.2f}'],
-        'Total Interest': [f'₹{total_interest:,.2f}']
+        'Loan Term': [f'{loan_term} months ({loan_term // 12} years {loan_term % 12} months)']
     }
     
     df1 = pd.DataFrame(row1_data)
@@ -137,56 +137,52 @@ if loan_amount > 0 and interest_rate > 0:
     plt.title('Loan Breakdown: Principal vs Interest', fontsize=12, fontweight='bold')
     st.pyplot(fig)
     
-    # Create amortization schedule - Payment breakdown over years
+    # Create amortization schedule - Payment breakdown over months
     st.write("---")
-    st.write("### Repayment Schedule - Annual Payments (Principal + Interest)")
+    st.markdown("<h3 style='text-align: center;'>Repayment Schedule</h3>", unsafe_allow_html=True)
     
-    years = []
-    principal_paid_yearly = []
-    interest_paid_yearly = []
+    months = []
+    principal_paid_monthly = []
+    interest_paid_monthly = []
     current_principal = loan_amount
     
-    for year in range(1, loan_term + 1):
-        # Calculate principal and interest paid in each year (12 months of payments)
-        yearly_principal = 0
-        yearly_interest = 0
-        
-        for month in range(12):
-            if current_principal > 0:
-                interest_payment = current_principal * monthly_rate
-                principal_payment = monthly_payment - interest_payment
-                
-                yearly_principal += principal_payment
-                yearly_interest += interest_payment
-                current_principal -= principal_payment
-        
-        current_principal = max(current_principal, 0)  # Ensure it doesn't go negative
-        years.append(year)
-        principal_paid_yearly.append(yearly_principal)
-        interest_paid_yearly.append(yearly_interest)
+    for month in range(1, loan_term + 1):
+        if current_principal > 0:
+            interest_payment = current_principal * monthly_rate
+            principal_payment = monthly_payment - interest_payment
+            
+            months.append(month)
+            principal_paid_monthly.append(principal_payment)
+            interest_paid_monthly.append(interest_payment)
+            current_principal -= principal_payment
+        else:
+            break
     
     # Create stacked bar chart
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(14, 5))
     
-    bars1 = ax.bar(years, principal_paid_yearly, label='Principal', color='#4CAF50', edgecolor='#2E7D32', linewidth=1.5)
-    bars2 = ax.bar(years, interest_paid_yearly, bottom=principal_paid_yearly, label='Interest', color='#FF9800', edgecolor='#F57C00', linewidth=1.5)
+    bars1 = ax.bar(months, principal_paid_monthly, label='Principal', color='#4CAF50', edgecolor='#2E7D32', linewidth=0.5)
+    bars2 = ax.bar(months, interest_paid_monthly, bottom=principal_paid_monthly, label='Interest', color='#FF9800', edgecolor='#F57C00', linewidth=0.5)
     
-    # Add value labels on stacked bars
-    for i, (year, principal, interest) in enumerate(zip(years, principal_paid_yearly, interest_paid_yearly)):
-        total = principal + interest
-        ax.text(year, total, f'₹{total:,.0f}', ha='center', va='bottom', fontsize=8, fontweight='bold')
-        # Add principal and interest breakdown
-        ax.text(year, principal/2, f'₹{principal:,.0f}', ha='center', va='center', fontsize=7, color='white', fontweight='bold')
-        ax.text(year, principal + interest/2, f'₹{interest:,.0f}', ha='center', va='center', fontsize=7, color='white', fontweight='bold')
+    # Add value labels only for every 12th month to avoid clutter
+    for i, (month, principal, interest) in enumerate(zip(months, principal_paid_monthly, interest_paid_monthly)):
+        if month % 12 == 0 or month == 1 or month == len(months):  # Show labels for every year + first and last month
+            total = principal + interest
+            if total > 0:
+                ax.text(month, total, f'₹{total:,.0f}', ha='center', va='bottom', fontsize=7, fontweight='bold')
     
-    ax.set_xlabel('Year', fontsize=11, fontweight='bold')
-    ax.set_ylabel('Annual Payment (₹)', fontsize=11, fontweight='bold')
-    ax.set_title('Annual Payment Breakdown (Principal + Interest)', fontsize=12, fontweight='bold')
+    ax.set_xlabel('Month', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Monthly Payment (₹)', fontsize=11, fontweight='bold')
+    ax.set_title(f'Monthly Payment Breakdown (Principal + Interest) - Total Tenure: {loan_term} months', fontsize=12, fontweight='bold')
     ax.legend(loc='upper right')
     ax.grid(axis='y', alpha=0.3)
     
     # Format y-axis as currency
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'₹{x/100000:.1f}L' if x >= 100000 else f'₹{x:,.0f}'))
+    
+    # Set x-axis to show every 12 months (1 year) label
+    ax.set_xticks(range(0, loan_term + 1, 12))
+    ax.set_xticklabels([f'M{i}' if i > 0 else '0' for i in range(0, loan_term + 1, 12)])
     
     plt.tight_layout()
     st.pyplot(fig)

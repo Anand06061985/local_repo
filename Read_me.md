@@ -1,2 +1,1 @@
-# this is my local repo - added now
-# this is a new feature
+# This is a Loan Payement Calculator with report insights
